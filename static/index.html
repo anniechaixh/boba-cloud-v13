@@ -637,7 +637,7 @@ async function handleStudentAuth(ev){
  if(authMode==="register"&&pin!==confirmPin)return authFeedback("The two PINs do not match.");
  submit.disabled=true;authFeedback("Connecting to cloud...");
  try{
-  const result=await apiRequest(authMode==="register"?"/api/register":"/api/login","POST",{username:id,pin});
+  const result=await apiRequest(authMode==="register"?"/api/register":"/api/login","POST",{username,pin});
   document.getElementById("authPin").value="";
   document.getElementById("confirmPin").value="";
   enterCloudAccount(result);
