@@ -218,6 +218,7 @@ font-weight:950;color:#7b5b16;box-shadow:0 8px 20px rgba(214,169,63,.28);padding
   <button id="logoutBtn" class="audio-btn" title="Save and switch student">↪ Log Out</button>
   <button id="musicBtn" class="audio-btn">🎵 BGM On</button>
   <button id="sfxBtn" class="audio-btn">🔊 Click On</button>
+  <label class="pill" for="volumeSlider" title="Adjust background music and click sound volume">🔉 <input id="volumeSlider" type="range" min="0" max="100" step="1" value="60" aria-label="Background music and click sound volume"> <span id="volumeValue">60%</span></label>
   <span class="pill">🪙 <span id="coinTop">0</span></span>
   <span class="pill">🧋 <span id="teaTop">1</span>/18</span>
  </div>
@@ -452,7 +453,7 @@ const LEGACY_KEY="bubbleTeaUasaAllYearsV5";
 const LEVEL_REWARDS={easy:40,medium:60,hard:100};
 const DEFAULT={
  gender:"girl",manager:"",shop:"Bubble Tea Vocab Café",coins:0,current:"Y6U1",
- progress:{},unlockedTeas:["classic"],certificate:null,audio:{music:true,sfx:true}
+ progress:{},unlockedTeas:["classic"],certificate:null,audio:{music:true,sfx:true,volume:60}
 };
 const OLD_PROFILE_PREFIX="bubbleTeaStudentProgressV12:";
 const OLD_KEY="bubbleTeaUasaAllYearsV6";
@@ -502,7 +503,7 @@ function stateFromRaw(r){
    manager:String(r.certificate.manager||"").slice(0,32),
    shop:String(r.certificate.shop||"").slice(0,36),
    date:String(r.certificate.date||"").slice(0,80)}:null,
-  audio:{music:r.audio?.music!==false,sfx:r.audio?.sfx!==false}
+  audio:{music:r.audio?.music!==false,sfx:r.audio?.sfx!==false,volume:Math.max(0,Math.min(100,Number.isFinite(Number(r.audio?.volume))?Number(r.audio.volume):60))}
  };
 }
 function authFeedback(message=""){document.getElementById("authFeedback").textContent=message}
@@ -729,13 +730,13 @@ function pct(a,b){return b?Math.round(a/b*100):0}
 /* AUDIO */
 let ac=null,bgmTimer=null,bgmStep=0;
 function ensureAudio(){if(!ac){let AC=window.AudioContext||window.webkitAudioContext;if(!AC)return false;ac=new AC()}if(ac.state==="suspended")ac.resume();return true}
-function tone(freq,start,dur,vol=.018,type="sine"){if(!ensureAudio())return;let o=ac.createOscillator(),g=ac.createGain(),f=ac.createBiquadFilter();o.type=type;o.frequency.value=freq;f.type="lowpass";f.frequency.value=1700;g.gain.setValueAtTime(.0001,start);g.gain.exponentialRampToValueAtTime(vol,start+.02);g.gain.exponentialRampToValueAtTime(.0001,start+dur);o.connect(f);f.connect(g);g.connect(ac.destination);o.start(start);o.stop(start+dur+.05)}
+function tone(freq,start,dur,vol=.018,type="sine"){vol*=state.audio.volume/100;if(vol<=0||!ensureAudio())return;let o=ac.createOscillator(),g=ac.createGain(),f=ac.createBiquadFilter();o.type=type;o.frequency.value=freq;f.type="lowpass";f.frequency.value=1700;g.gain.setValueAtTime(.0001,start);g.gain.exponentialRampToValueAtTime(vol,start+.02);g.gain.exponentialRampToValueAtTime(.0001,start+dur);o.connect(f);f.connect(g);g.connect(ac.destination);o.start(start);o.stop(start+dur+.05)}
 function hz(m){return 440*Math.pow(2,(m-69)/12)}
 function cafeBar(){if(!state.audio.music||!ensureAudio())return;let chords=[[60,64,67,71],[57,60,64,67],[53,57,60,64],[55,59,62,64]],c=chords[bgmStep%4],n=ac.currentTime+.02;c.forEach((m,i)=>tone(hz(m),n,1.8,.008,i%2?"sine":"triangle"));[c[0]+12,c[2]+12,c[1]+12,c[3]+12,c[2]+12,c[1]+12,c[0]+12,c[2]+12].forEach((m,i)=>tone(hz(m),n+i*.23,.17,.015));tone(hz(c[0]-12),n,1,.014,"triangle");bgmStep++}
 function startBgm(){if(!state.audio.music||!ensureAudio())return;if(bgmTimer)clearInterval(bgmTimer);cafeBar();bgmTimer=setInterval(cafeBar,1900)}
 function stopBgm(){if(bgmTimer){clearInterval(bgmTimer);bgmTimer=null}}
 function clickSound(){if(!state.audio.sfx||!ensureAudio())return;let n=ac.currentTime;tone(730,n,.04,.022);tone(980,n+.025,.03,.01)}
-function updateAudio(){let m=document.getElementById("musicBtn"),s=document.getElementById("sfxBtn");if(m){m.textContent=state.audio.music?"🎵 BGM On":"🎵 BGM Off";m.classList.toggle("off",!state.audio.music)}if(s){s.textContent=state.audio.sfx?"🔊 Click On":"🔇 Click Off";s.classList.toggle("off",!state.audio.sfx)}}
+function updateAudio(){let m=document.getElementById("musicBtn"),s=document.getElementById("sfxBtn"),v=document.getElementById("volumeSlider"),label=document.getElementById("volumeValue");if(m){m.textContent=state.audio.music?"🎵 BGM On":"🎵 BGM Off";m.classList.toggle("off",!state.audio.music)}if(s){s.textContent=state.audio.sfx?"🔊 Click On":"🔇 Click Off";s.classList.toggle("off",!state.audio.sfx)}if(v)v.value=state.audio.volume;if(label)label.textContent=state.audio.volume+"%"}
 function speak(t){if(!("speechSynthesis" in window))return toast("Speech audio is not supported in this browser.");stopBgm();speechSynthesis.cancel();let u=new SpeechSynthesisUtterance(t);u.lang="en-GB";u.rate=.82;u.onend=()=>{if(state.audio.music)startBgm()};speechSynthesis.speak(u)}
 
 /* SELECTORS */
@@ -771,6 +772,7 @@ function showView(v){
 }
 document.getElementById("musicBtn").onclick=e=>{e.stopPropagation();state.audio.music=!state.audio.music;save();state.audio.music?startBgm():stopBgm()};
 document.getElementById("sfxBtn").onclick=e=>{e.stopPropagation();state.audio.sfx=!state.audio.sfx;save()};
+document.getElementById("volumeSlider").oninput=e=>{state.audio.volume=Number(e.target.value);updateAudio();save()};
 document.addEventListener("click",e=>{if(e.target.closest("button")&&e.target.id!=="sfxBtn")clickSound()});
 
 /* RENDER */
