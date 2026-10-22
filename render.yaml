@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: boba-vocab-cloud
+    runtime: docker
+    plan: starter
+    healthCheckPath: /api/health
+    dockerContext: .
+    dockerfilePath: ./Dockerfile
+    disk:
+      name: boba-student-data
+      mountPath: /data
+      sizeGB: 1
+    envVars:
+      - key: BOBA_DATA_DIR
+        value: /data
+      - key: BOBA_COOKIE_SECURE
+        value: "true"

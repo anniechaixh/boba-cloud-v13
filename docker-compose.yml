@@ -1,0 +1,12 @@
+services:
+  boba:
+    build: .
+    environment:
+      - BOBA_DATA_DIR=/data
+      - BOBA_COOKIE_SECURE=false  # Local network HTTP testing only; use true behind HTTPS.
+    volumes:
+      - boba_records:/data
+    ports:
+      - "8000:8000"
+volumes:
+  boba_records:
