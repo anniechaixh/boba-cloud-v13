@@ -193,6 +193,9 @@ def login(body:AuthData,request:Request,response:Response):
         if not valid:
             fail_attempt(key)
             raise HTTPException(401,"Incorrect Student ID or PIN")
+        if row["display_name"] == username:
+            db.execute("UPDATE students SET display_name=? WHERE username=?", (body.username.strip(), username))
+            row = db.execute("SELECT * FROM students WHERE username=?", (username,)).fetchone()
         set_session(response,db,username)
         result=record(row)
     clear_attempts(key)
